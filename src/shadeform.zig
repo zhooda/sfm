@@ -32,6 +32,57 @@ pub const InstanceType = struct {
     },
 };
 
+pub const Instance = struct {
+    id: []const u8,
+    cloud: []const u8,
+    region: []const u8,
+    shade_instance_type: []const u8,
+    cloud_instance_type: []const u8,
+    cloud_assigned_id: []const u8,
+    shade_cloud: bool,
+    name: []const u8,
+    configuration: struct {
+        memory_in_gb: u16,
+        storage_in_gb: u32,
+        vcpus: u16,
+        num_gpus: u8,
+        gpu_type: []const u8,
+        interconnect: []const u8,
+        vram_per_gpu_in_gb: u16,
+        os: []const u8,
+    },
+    ip: []const u8,
+    ssh_user: []const u8,
+    status: []const u8,
+    cost_estimate: []const u8,
+    hourly_price: u32,
+    launch_configuration: struct {
+        type: []const u8,
+        docker_configuration: struct {
+            image: []const u8,
+            args: []const u8,
+            shared_memory_in_gb: u16,
+            envs: []struct {
+                name: []const u8,
+                value: []const u8,
+            },
+            post_mappings: []struct {
+                host_port: u16,
+                container_port: u16,
+            },
+            volume_mounts: []struct {
+                host_path: []const u8,
+                container_path: []const u8,
+            },
+        },
+        script_configuration: struct {
+            base64_script: []const u8,
+        },
+    },
+    created_at: []const u8,
+    deleted_at: []const u8,
+};
+
 pub const CreateInstanceReq = struct {
     cloud: []const u8,
     region: []const u8,
@@ -79,23 +130,8 @@ pub const Client = struct {
     _bbuf: []u8 = undefined,
     _req_opts: std.http.Client.RequestOptions = undefined,
 
-    pub fn printUri(self: Self) void {
-        std.debug.print("shadeform.Client.uri = {}\n", .{self.uri});
-    }
-
-    pub fn printHeaders(self: Self) void {
-        const headers = self.headers;
-        for (headers) |header| {
-            std.debug.print(
-                "{s}: {s}\n",
-                .{ header.name, header.value },
-            );
-        }
-    }
-
-    pub fn getInstances(self: *Self) ![]InstanceType {
-        self.uri.path = std.Uri.Component{ .raw = "/v1/instances/types" };
-
+    pub fn makeRequest(self: *Self, endpoint: []const u8) !std.http.Client.Request {
+        self.uri.path = std.Uri.Component{ .raw = endpoint };
         self._req_opts = std.http.Client.RequestOptions{
             .server_header_buffer = &self._hbuf,
             .extra_headers = self.headers,
@@ -119,6 +155,26 @@ pub const Client = struct {
         //     });
         // }
 
+        return request;
+    }
+
+    pub fn printUri(self: Self) void {
+        std.debug.print("shadeform.Client.uri = {}\n", .{self.uri});
+    }
+
+    pub fn printHeaders(self: Self) void {
+        const headers = self.headers;
+        for (headers) |header| {
+            std.debug.print(
+                "{s}: {s}\n",
+                .{ header.name, header.value },
+            );
+        }
+    }
+
+    pub fn getInstanceTypes(self: *Self) ![]InstanceType {
+        var request = try self.makeRequest("/v1/instances/types");
+
         try std.testing.expectEqual(request.response.status, .ok);
 
         var rdr = request.reader();
@@ -127,8 +183,33 @@ pub const Client = struct {
         errdefer self.allocator.free(self._bbuf);
 
         const T = struct { instance_types: []InstanceType };
-        const parsed = try std.json.parseFromSliceLeaky(T, self.allocator, self._bbuf, .{});
+        const parsed = try std.json.parseFromSliceLeaky(
+            T,
+            self.allocator,
+            self._bbuf,
+            .{},
+        );
 
         return parsed.instance_types;
+    }
+
+    pub fn getInstances(self: *Self) ![]Instance {
+        var request = try self.makeRequest("/v1/instances");
+
+        try std.testing.expectEqual(request.response.status, .ok);
+
+        var rdr = request.reader();
+        self._bbuf = try rdr.readAllAlloc(self.allocator, body_max_size);
+        errdefer self.allocator.free(self._bbuf);
+
+        const T = struct { instances: []Instance };
+        const parsed = try std.json.parseFromSliceLeaky(
+            T,
+            self.allocator,
+            self._bbuf,
+            .{},
+        );
+
+        return parsed.instances;
     }
 };

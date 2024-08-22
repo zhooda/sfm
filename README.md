@@ -35,7 +35,7 @@ source ~/.profile
 set -Ux SHADEFORM_API_KEY "[YOUR_KEY_HERE]"
 ```
 
-**Note:** Only listing instances and instance types is currently implemented.
+**Note:** not all API features are currently implemented.
 
 ### Instances
 
@@ -44,6 +44,10 @@ set -Ux SHADEFORM_API_KEY "[YOUR_KEY_HERE]"
 sfm instances list
 # list all instance types
 sfm instances list-types
+# describe an instance
+sfm instances describe --id [INSTANCE_ID]
+# delete an instance
+sfm instances delete --id [INSTANCE_ID]
 ```
 
 ## Notes

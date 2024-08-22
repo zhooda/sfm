@@ -27,15 +27,29 @@ const Cmd = struct {
 
     pub fn instancesList(self: Cmd) !void {
         const instances = try self.client.getInstances();
-        for (instances, 0..) |inst, idx| {
-            _ = try stdout.print("[{d}]: {s}, {s}, {s} - ${d}/hr\n", .{
-                idx,
-                inst.id,
-                inst.cloud,
-                inst.shade_instance_type,
-                @as(f32, @floatFromInt(inst.hourly_price)) / 100.0,
-            });
+        for (instances) |inst| {
+            _ = try stdout.print(
+                "{s}({s}): {s}\n",
+                .{
+                    inst.name,
+                    inst.id,
+                    inst.status,
+                },
+            );
         }
+    }
+
+    pub fn instanceDescribe(self: Cmd, instance_id: []const u8) !void {
+        const instance = try self.client.getInstance(instance_id);
+        _ = try stdout.print(
+            "{s}\n",
+            .{ std.json.fmt(instance, .{ .whitespace = .indent_2 }) },
+        );
+    }
+
+    pub fn instanceDelete(self: Cmd, instance_id: []const u8) !void {
+        try self.client.deleteInstance(instance_id);
+        _ = try stdout.print("{s} deleted\n", .{instance_id});
     }
 };
 
@@ -55,8 +69,12 @@ pub fn main() !void {
             instances: struct {
                 __commands__: union(enum) {
                     create: struct {},
-                    describe: struct {},
-                    delete: struct {},
+                    describe: struct {
+                        id: []const u8,
+                    },
+                    delete: struct {
+                        id: []const u8,
+                    },
                     list: struct {},
                     @"list-types": struct {},
                 },
@@ -100,6 +118,12 @@ pub fn main() !void {
                 },
                 .list => {
                     try cli.instancesList();
+                },
+                .describe => |d| {
+                    try cli.instanceDescribe(d.id);
+                },
+                .delete => |d| {
+                    try cli.instanceDelete(d.id);
                 },
                 else => return error.NotImplemented,
             }

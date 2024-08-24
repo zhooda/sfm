@@ -168,9 +168,8 @@ pub const Client = struct {
         try request.send();
 
         // write body if required
-        switch (method) {
-            .POST => if (options.body) |value| try request.writeAll(value),
-            else => {},
+        if (method == .POST) {
+            try request.writeAll(body);
         }
 
         try request.finish();

@@ -52,7 +52,7 @@ pub const Instance = struct {
     launch_configuration: ?LaunchConfiguration = null,
     created_at: []const u8,
     deleted_at: ?[]const u8, // optional
-    details: ?struct{} = null,
+    details: ?struct {} = null,
     ssh_key_id: []const u8, // extra
 
     pub const Configuration = struct {
@@ -205,18 +205,8 @@ pub const Client = struct {
 
         try std.testing.expectEqual(request.response.status, .ok);
 
-        var rdr = request.reader();
-        // _ = try rdr.readAll(&self._bbuf);
-        self._bbuf = try rdr.readAllAlloc(self.allocator, body_max_size);
-        errdefer self.allocator.free(self._bbuf);
-
         const T = struct { instance_types: []InstanceType };
-        const parsed = try std.json.parseFromSliceLeaky(
-            T,
-            self.allocator,
-            self._bbuf,
-            .{},
-        );
+        const parsed = try self.parseBodyLeaky(T, &request);
 
         return parsed.instance_types;
     }
@@ -226,17 +216,8 @@ pub const Client = struct {
 
         try std.testing.expectEqual(request.response.status, .ok);
 
-        var rdr = request.reader();
-        self._bbuf = try rdr.readAllAlloc(self.allocator, body_max_size);
-        errdefer self.allocator.free(self._bbuf);
-
         const T = struct { instances: []Instance };
-        const parsed = try std.json.parseFromSliceLeaky(
-            T,
-            self.allocator,
-            self._bbuf,
-            .{},
-        );
+        const parsed = try self.parseBodyLeaky(T, &request);
 
         return parsed.instances;
     }
@@ -272,12 +253,22 @@ pub const Client = struct {
 
         try std.testing.expectEqual(request.response.status, .ok);
 
+        const parsed = try self.parseBodyLeaky(Instance, &request);
+
+        return parsed;
+    }
+
+    fn parseBodyLeaky(
+        self: *Self,
+        comptime T: type,
+        request: *std.http.Client.Request,
+    ) !T {
         var rdr = request.reader();
         self._bbuf = try rdr.readAllAlloc(self.allocator, body_max_size);
         errdefer self.allocator.free(self._bbuf);
 
         const parsed = try std.json.parseFromSliceLeaky(
-            Instance,
+            T,
             self.allocator,
             self._bbuf,
             .{},

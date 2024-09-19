@@ -5,6 +5,7 @@ const body_max_size = 1024 * 1024 * 4;
 
 pub const InstanceType = struct {
     cloud: []const u8,
+    // region: []const u8,
     shade_instance_type: []const u8,
     cloud_instance_type: []const u8,
     configuration: struct {
@@ -15,8 +16,8 @@ pub const InstanceType = struct {
         gpu_type: []const u8,
         interconnect: []const u8,
         nvlink: bool,
-        os_options: [][]const u8,
         vram_per_gpu_in_gb: u16,
+        os_options: [][]const u8,
     },
     memory_in_gb: u16,
     storage_in_gb: u32,
@@ -29,6 +30,11 @@ pub const InstanceType = struct {
     availability: []struct {
         region: []const u8,
         available: bool,
+        display_name: []const u8,
+    },
+    boot_time: struct {
+        min_boot_in_sec: u32,
+        max_boot_in_sec: u32,
     },
 };
 
@@ -266,6 +272,7 @@ pub const Client = struct {
         var rdr = request.reader();
         self._bbuf = try rdr.readAllAlloc(self.allocator, body_max_size);
         errdefer self.allocator.free(self._bbuf);
+        // std.debug.print("{s}", .{self._bbuf});
 
         const parsed = try std.json.parseFromSliceLeaky(
             T,

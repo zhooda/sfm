@@ -13,12 +13,12 @@ const Cmd = struct {
         const instance_types = try self.client.getInstanceTypes();
         for (instance_types, 0..) |it, idx| {
             _ = try stdout.print(
-                "[{d}]: {s}, {s}, {s} - ${d}/hr\n",
+                "[{d}]: {s}, {s}x{d} - ${d:.2}/hr\n",
                 .{
                     idx,
                     it.cloud,
-                    it.shade_instance_type,
-                    it.cloud_instance_type,
+                    it.gpu_type,
+                    it.num_gpus,
                     @as(f32, @floatFromInt(it.hourly_price)) / 100.0,
                 },
             );
@@ -43,7 +43,7 @@ const Cmd = struct {
         const instance = try self.client.getInstance(instance_id);
         _ = try stdout.print(
             "{s}\n",
-            .{ std.json.fmt(instance, .{ .whitespace = .indent_2 }) },
+            .{std.json.fmt(instance, .{ .whitespace = .indent_2 })},
         );
     }
 
